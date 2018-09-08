@@ -16,7 +16,8 @@ def generate_companies_from_file(file_name):
 # given a list of companies and a dictionary of words, return string with capitalised brand names
 def capitalise_companies(companies, payload):
     # TODO: optimize
-    words = re.findall(r"[\w']+", payload)
+    # words = re.findall(r"[\w']+", payload)
+    words = payload.split()
     for word in words:
         phrase_length = 1
         start_index = words.index(word)

@@ -1,6 +1,7 @@
 import nltk
 from nltk.corpus import wordnet
 import collections
+import preprocess_util
 
 pos_tagset = {
     "$":"dollar",
@@ -249,7 +250,11 @@ def tag_price_sensitive(payload):
 
 
 def main():
-    text = "I want 3 hot pink, strong Black and Decker step ladders, 2 cheap hammers, and blue paint."
+    text = "I want 3 hot pink, strong black and decker step ladders, 2 cheap hammers, and expensive, blue paint."
+    print(text)
+
+    companies = preprocess_util.generate_companies_from_file('company-data.txt')
+    text = preprocess_util.capitalise_companies(companies, text)
     print(text)
     tagged_words = process_text(text)
     tagged_words = fix_colors(tagged_words)
