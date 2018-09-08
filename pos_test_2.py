@@ -1,4 +1,5 @@
 import nltk
+from nltk.corpus import wordnet
 import collections
 
 pos_tagset = {
@@ -57,11 +58,49 @@ def process_text(text):
     print(pos_text)
     count = 0
     for word in pos_text:
-        tagged_words[count] = {'word': word[0], 'pos': word[1], 'pos_simple': pos_tagset[word[1]], 'type': ''}
+        tagged_words[count] = {'word': word[0], 'pos': word[1], 'pos_simple': pos_tagset[word[1]], 'type': None, 'price_sensitive':None}
         count += 1
     return tagged_words
 
 def find_entity(text, pos_graph, type_label):
+    current_state = 'Start'
+    items = []
+    phrase = ''
+    word_found = False
+    start_index = 0
+    index = 0
+
+    for payload in text:
+        word = text[payload]
+        # if we find a pos that is in our graph
+        if word['pos'] in pos_graph[current_state]:
+            current_state = word['pos']
+            # print(current_state)
+            # print('found a proper noun:', word['word'])
+            phrase += word['word'] + ' '
+            word['type'] = type_label
+            if not word_found:
+                start_index = index
+                word_found = True
+
+        else:
+            # if not in graph then add phrase
+            if phrase:
+                # items.append(phrase.strip())
+                end_index = index
+                object = {'phrase':phrase.strip(), 'start':start_index, 'end':end_index-1}
+                items.append(object)
+
+                word_found = False
+                phrase = ''
+                current_state = 'Start'
+
+        index += 1
+
+    return text, items
+
+
+def find_multiple_entities(text, pos_graph, type_label):
     current_state = 'Start'
     items = []
     phrase = ''
@@ -99,6 +138,7 @@ def find_entity(text, pos_graph, type_label):
 
     return text, items
 
+
 def find_product_attributes(text_payload, product_list):
     brand_graph = {
         'Start': ['NNP'],
@@ -114,8 +154,7 @@ def find_product_attributes(text_payload, product_list):
 
     modifier_graph = {
         'Start': ['JJ'],
-        'JJ': ['JJ',','],
-        ',': ['JJ']
+        'JJ': ['JJ']
     }
     start_index = 0
     product_words_master_list = []
@@ -163,23 +202,57 @@ def find_product_attributes(text_payload, product_list):
             unit = units[0]['phrase']
         else:
             unit = None
+        description = []
         if descriptions:
-            description = descriptions[0]['phrase']
+            for word in descriptions:
+                description.append(word['phrase'])
         else:
             description = None
 
         result[product['phrase']] = {
             'brand': brand,
             'units': unit,
-            'description': description
+            'modifiers': description
         }
     return result
 
 
+def fix_colors(tagged_words):
+    color_bow = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'indigo', 'violet', 'purple', 'magenta', 'pink', 'brown', 'white', 'gray', 'black']
+    for word in tagged_words:
+        current_word = tagged_words[word]
+        if current_word['word'] in color_bow:
+            current_word['pos'] = 'JJ'
+            current_word['pos_simple'] = pos_tagset['JJ']
+    return tagged_words
+
+
+def generate_synonyms_antonyms(word):
+    synonyms = []
+    antonyms = []
+
+    for syn in wordnet.synsets(word):
+        for l in syn.lemmas():
+            synonyms.append(l.name())
+            if l.antonyms():
+                antonyms.append(l.antonyms()[0].name())
+    return synonyms, antonyms
+
+
+def tag_price_sensitive(payload):
+    synonyms, antonyms = generate_synonyms_antonyms('cheap')
+    for product in payload:
+        for word in payload[product]['modifiers']:
+            if word in synonyms or word in antonyms:
+                payload[product]['price_sensitive'] = ['YES', word]
+    return payload
+
+
 def main():
-    text = "I want 3 hot, pink Black and Decker step ladders, 2 hammers, and blue paint."
+    text = "I want 3 hot pink, strong Black and Decker step ladders, 2 cheap hammers, and blue paint."
     print(text)
     tagged_words = process_text(text)
+    tagged_words = fix_colors(tagged_words)
 
     brand_graph = {
         'Start': ['NNP'],
@@ -211,12 +284,14 @@ def main():
 
 
     payload = find_product_attributes(tagged_words, products)
-
+    payload = tag_price_sensitive(payload)
     print(payload)
     for product in payload:
         print(product)
         print(payload[product])
         print()
+
+    print(tagged_words)
 
 if __name__ == "__main__":
     main()
