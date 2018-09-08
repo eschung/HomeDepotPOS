@@ -77,35 +77,91 @@ for word in pos_text:
     count += 1
 
 
-def find_entity(text, brand_graph, type_label):
+def find_entity(text, pos_graph, type_label):
     current_state = 'Start'
-    brands = []
+    items = []
     phrase = ''
     word_found = False
     start_index = 0
+    index = 0
 
     for payload in text:
         word = text[payload]
         # if we find a pos that is in our graph
-        if word['pos'] in brand_graph[current_state]:
+        if word['pos'] in pos_graph[current_state]:
             current_state = word['pos']
             # print(current_state)
             # print('found a proper noun:', word['word'])
             phrase += word['word'] + ' '
             word['type'] = type_label
-            # if word_found:
-
+            if not word_found:
+                start_index = index
+                word_found = True
 
         else:
             # if not in graph then add phrase
             if phrase:
-                brands.append(phrase.strip())
+                # items.append(phrase.strip())
+                end_index = index
+                object = {'phrase':phrase.strip(), 'start':start_index, 'end':end_index-1}
+                items.append(object)
+
+                word_found = False
                 phrase = ''
                 current_state = 'Start'
 
-    return text, brands
 
+        index += 1
 
+    return text, items
+
+def find_product_attributes(text_payload, product_list):
+    brand_graph = {
+        'Start': ['NNP'],
+        'NNP': ['NNP', 'IN', 'CC'],
+        'IN': ['NNP'],
+        'CC': ['NNP']
+    }
+
+    product_graph = {
+        'Start': ['NN', 'NNS'],
+        'NN': ['NN', 'NNS'],
+        'NNS': []
+    }
+
+    unit_graph = {
+        'Start': ['CD'],
+        'CD': []
+    }
+    start_index = 0
+    product_words_master_list = []
+    product_count = 0
+
+    for product in product_list:
+        end_index = product['end']
+        product_words = []
+
+        for i in range(start_index, end_index+1):
+            product_words.append(text_payload[i])
+        # print(product_words)
+        product_words_master_list.append([product_words])
+        try:
+            start_index = end_index + 1
+        except:
+            print('out of bounds!')
+
+    # go through each product
+    for product in product_list:
+        end_index = product['end']
+        # find brand
+        temp, brands = find_entity(product_words_master_list[product_count], brand_graph, 'BRAND')
+
+        # find units
+
+        start_index = end_index
+        print(product)
+        print(brands)
+        product_count += 1
 
 brand_graph = {
     'Start':['NNP'],
@@ -126,7 +182,9 @@ unit_graph = {
 }
 
 print(text)
-print(pos_text,'\n')
+print(pos_text)
+print(tagged_words)
+print()
 
 tagged_words, brands = find_entity(tagged_words, brand_graph, 'BRAND')
 tagged_words, products = find_entity(tagged_words, product_graph, 'PRODUCT')
@@ -135,6 +193,9 @@ tagged_words, units = find_entity(tagged_words, unit_graph, 'UNIT')
 print('Brands:',brands)
 print('Products:',products)
 print('Units:',units)
+print()
+
+find_product_attributes(tagged_words,products)
 
 '''
 {
