@@ -1,14 +1,6 @@
 import nltk
 import collections
 
-
-text = "Along the way, we'll cover some fundamental techniques in NLP, including sequence labeling, n-gram models, backoff, and evaluation. These techniques are useful in many areas, and tagging gives us a simple context in which to present them. We will also see how tagging is the second step in the typical NLP pipeline, following tokenization."
-text = "This is a Wellington Manufacturing hammer."
-text = "I want 3 Black and Decker step ladders, 2 hammers, and blue paint."
-tokenized_text = nltk.word_tokenize(text)
-pos_text = nltk.pos_tag(tokenized_text)
-# print(pos_text)
-
 pos_tagset = {
     "$":"dollar",
     "''":"closing quotation mark",
@@ -56,26 +48,18 @@ pos_tagset = {
     "WRB":"Wh-adverb",
     "``":"opening quotation mark"
 }
-# for tag in pos_tagset:
-#     print(tag)
 
-# filepath = 'test.txt'
-# with open(filepath) as fp:
-#    line = fp.readline()
-#    while line:
-#        if ':' in line:
-#            colon_pos = line.find(':')
-#            print('"'+line[:colon_pos]+'":"'+line[colon_pos+1:].strip()+'",')
-#        line = fp.readline()
 
-tagged_words = collections.OrderedDict()
-
-count = 0
-for word in pos_text:
-    # print(word[0]+' : '+pos_tagset[word[1]])
-    tagged_words[count] = {'word':word[0], 'pos':word[1], 'pos_simple':pos_tagset[word[1]], 'type':''}
-    count += 1
-
+def process_text(text):
+    tagged_words = collections.OrderedDict()
+    tokenized_text = nltk.word_tokenize(text)
+    pos_text = nltk.pos_tag(tokenized_text)
+    print(pos_text)
+    count = 0
+    for word in pos_text:
+        tagged_words[count] = {'word': word[0], 'pos': word[1], 'pos_simple': pos_tagset[word[1]], 'type': ''}
+        count += 1
+    return tagged_words
 
 def find_entity(text, pos_graph, type_label):
     current_state = 'Start'
@@ -123,20 +107,21 @@ def find_product_attributes(text_payload, product_list):
         'CC': ['NNP']
     }
 
-    product_graph = {
-        'Start': ['NN', 'NNS'],
-        'NN': ['NN', 'NNS'],
-        'NNS': []
-    }
-
     unit_graph = {
         'Start': ['CD'],
         'CD': []
+    }
+
+    modifier_graph = {
+        'Start': ['JJ'],
+        'JJ': ['JJ',','],
+        ',': ['JJ']
     }
     start_index = 0
     product_words_master_list = []
     product_count = 0
     test_ordered_dict = collections.OrderedDict()
+    result = {}
 
     for product in product_list:
         test_ordered_dict = collections.OrderedDict()
@@ -163,60 +148,75 @@ def find_product_attributes(text_payload, product_list):
         temp, brands = find_entity(product_words_master_list[product_count], brand_graph, 'BRAND')
 
         # find units
+        temp, units = find_entity(product_words_master_list[product_count], unit_graph, 'UNIT')
 
-        start_index = end_index
-        print(product)
-        print(brands)
-        print()
+        # find description
+        temp, descriptions = find_entity(product_words_master_list[product_count], modifier_graph, 'MODIFIER')
+
         product_count += 1
 
-brand_graph = {
-    'Start':['NNP'],
-    'NNP':['NNP','IN','CC'],
-    'IN':['NNP'],
-    'CC':['NNP']
-}
+        if brands:
+            brand = brands[0]['phrase']
+        else:
+            brand = None
+        if units:
+            unit = units[0]['phrase']
+        else:
+            unit = None
+        if descriptions:
+            description = descriptions[0]['phrase']
+        else:
+            description = None
 
-product_graph = {
-    'Start':['NN','NNS'],
-    'NN':['NN','NNS'],
-    'NNS':[]
-}
+        result[product['phrase']] = {
+            'brand': brand,
+            'units': unit,
+            'description': description
+        }
+    return result
 
-unit_graph = {
-    'Start':['CD'],
-    'CD':[]
-}
 
-print(text)
-print(pos_text)
-print(tagged_words)
-print()
+def main():
+    text = "I want 3 hot, pink Black and Decker step ladders, 2 hammers, and blue paint."
+    print(text)
+    tagged_words = process_text(text)
 
-tagged_words, brands = find_entity(tagged_words, brand_graph, 'BRAND')
-tagged_words, products = find_entity(tagged_words, product_graph, 'PRODUCT')
-tagged_words, units = find_entity(tagged_words, unit_graph, 'UNIT')
+    brand_graph = {
+        'Start': ['NNP'],
+        'NNP': ['NNP', 'IN', 'CC'],
+        'IN': ['NNP'],
+        'CC': ['NNP']
+    }
 
-print('Brands:',brands)
-print('Products:',products)
-print('Units:',units)
-print()
+    product_graph = {
+        'Start': ['NN', 'NNS'],
+        'NN': ['NN', 'NNS'],
+        'NNS': []
+    }
 
-find_product_attributes(tagged_words,products)
+    unit_graph = {
+        'Start': ['CD'],
+        'CD': []
+    }
 
-'''
-{
-    'step ladders': {
-                    'brand':'Black and Decker',
-                    'units': 3
-                    }
-    'hammers': {
-                'units': 2
-                }
-    'paint':{
-            'color': 'blue'
-            }
-}
-'''
+    modifier_graph = {
+        'Start': ['JJ'],
+        'JJ': ['JJ']
+    }
 
-# {'word':'step ladder', 'start':3, 'end':4}
+    tagged_words, brands = find_entity(tagged_words, brand_graph, 'BRAND')
+    tagged_words, products = find_entity(tagged_words, product_graph, 'PRODUCT')
+    tagged_words, units = find_entity(tagged_words, unit_graph, 'UNIT')
+    tagged_words, description = find_entity(tagged_words, modifier_graph, 'MODIFIER')
+
+
+    payload = find_product_attributes(tagged_words, products)
+
+    print(payload)
+    for product in payload:
+        print(product)
+        print(payload[product])
+        print()
+
+if __name__ == "__main__":
+    main()
