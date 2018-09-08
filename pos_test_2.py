@@ -1,9 +1,12 @@
 import nltk
+import collections
 
 
-
-# tokenized_text = nltk.word_tokenize(text)
-# pos_text = nltk.pos_tag(tokenized_text)
+text = "Along the way, we'll cover some fundamental techniques in NLP, including sequence labeling, n-gram models, backoff, and evaluation. These techniques are useful in many areas, and tagging gives us a simple context in which to present them. We will also see how tagging is the second step in the typical NLP pipeline, following tokenization."
+text = "This is a Wellington Manufacturing hammer."
+text = "I want 3 Black and Decker step ladders, 2 hammers, and blue paint."
+tokenized_text = nltk.word_tokenize(text)
+pos_text = nltk.pos_tag(tokenized_text)
 # print(pos_text)
 
 pos_tagset = {
@@ -64,29 +67,88 @@ pos_tagset = {
 #            colon_pos = line.find(':')
 #            print('"'+line[:colon_pos]+'":"'+line[colon_pos+1:].strip()+'",')
 #        line = fp.readline()
-#
-# for word in pos_text:
-#     print(word[0]+' : '+pos_tagset[word[1]])
 
-with open('company-data.txt') as f:
-    read_data = f.readlines()
-f.closed
+tagged_words = collections.OrderedDict()
 
-for line in read_data:
-    tokenized_text = nltk.word_tokenize(line)
-    pos_text = nltk.pos_tag(tokenized_text)
-    print(pos_text)
-    for word in pos_text:
-        print(word[0]+' : '+pos_tagset[word[1]])
-    print()
+count = 0
+for word in pos_text:
+    # print(word[0]+' : '+pos_tagset[word[1]])
+    tagged_words[count] = {'word':word[0], 'pos':word[1], 'pos_simple':pos_tagset[word[1]], 'type':''}
+    count += 1
+
+
+def find_entity(text, brand_graph, type_label):
+    current_state = 'Start'
+    brands = []
+    phrase = ''
+    word_found = False
+    start_index = 0
+
+    for payload in text:
+        word = text[payload]
+        # if we find a pos that is in our graph
+        if word['pos'] in brand_graph[current_state]:
+            current_state = word['pos']
+            # print(current_state)
+            # print('found a proper noun:', word['word'])
+            phrase += word['word'] + ' '
+            word['type'] = type_label
+            if word_found:
+
+
+        else:
+            # if not in graph then add phrase
+            if phrase:
+                brands.append(phrase.strip())
+                phrase = ''
+                current_state = 'Start'
+
+    return text, brands
+
 
 
 brand_graph = {
-    'NNP':['NNP','IN'],
-    'IN':['NNP']
+    'Start':['NNP'],
+    'NNP':['NNP','IN','CC'],
+    'IN':['NNP'],
+    'CC':['NNP']
 }
 
-noun_phrase_graph = {
-    'NN':['NN','JJ','IN'],
-    'IN':['NN','JJ']
+product_graph = {
+    'Start':['NN','NNS'],
+    'NN':['NN','NNS'],
+    'NNS':[]
 }
+
+unit_graph = {
+    'Start':['CD'],
+    'CD':[]
+}
+
+print(text)
+print(pos_text,'\n')
+
+tagged_words, brands = find_entity(tagged_words, brand_graph, 'BRAND')
+tagged_words, products = find_entity(tagged_words, product_graph, 'PRODUCT')
+tagged_words, units = find_entity(tagged_words, unit_graph, 'UNIT')
+
+print('Brands:',brands)
+print('Products:',products)
+print('Units:',units)
+
+'''
+{
+    'step ladders': {
+                    'brand':'Black and Decker',
+                    'units': 3
+                    }
+    'hammers': {
+                'units': 2
+                }
+    'paint':{
+            'color': 'blue'
+            }
+}
+'''
+
+# {'word':'step ladder', 'start':3, 'end':4}
