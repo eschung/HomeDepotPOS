@@ -139,13 +139,14 @@ def find_product_attributes(text_payload, product_list):
     test_ordered_dict = collections.OrderedDict()
 
     for product in product_list:
+        test_ordered_dict = collections.OrderedDict()
+
         end_index = product['end']
         product_words = []
         # print(start_index,end_index+1)
         # print(text_payload[start_index])
         for i in range(start_index, end_index+1):
             # product_words.append(text_payload[i])
-            print(text_payload[i])
             test_ordered_dict[i] = text_payload[i]
         # print(product_words)
         # product_words_master_list.append([product_words])
