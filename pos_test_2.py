@@ -136,15 +136,20 @@ def find_product_attributes(text_payload, product_list):
     start_index = 0
     product_words_master_list = []
     product_count = 0
+    test_ordered_dict = collections.OrderedDict()
 
     for product in product_list:
         end_index = product['end']
         product_words = []
-
+        # print(start_index,end_index+1)
+        # print(text_payload[start_index])
         for i in range(start_index, end_index+1):
-            product_words.append(text_payload[i])
+            # product_words.append(text_payload[i])
+            print(text_payload[i])
+            test_ordered_dict[i] = text_payload[i]
         # print(product_words)
-        product_words_master_list.append([product_words])
+        # product_words_master_list.append([product_words])
+        product_words_master_list.append(test_ordered_dict)
         try:
             start_index = end_index + 1
         except:
@@ -161,6 +166,7 @@ def find_product_attributes(text_payload, product_list):
         start_index = end_index
         print(product)
         print(brands)
+        print()
         product_count += 1
 
 brand_graph = {
