@@ -93,7 +93,7 @@ def find_entity(text, brand_graph, type_label):
             # print('found a proper noun:', word['word'])
             phrase += word['word'] + ' '
             word['type'] = type_label
-            if word_found:
+            # if word_found:
 
 
         else:
