@@ -1,6 +1,17 @@
 import re
 
-test_companies = ['BLACK AND DECKER']
+# given a list of companies (one per line), create a list of the companies from the file
+def generate_companies_from_file(file_name):
+    with open(file_name) as file:
+        read_data = file.readlines()
+
+    companies = []
+    for line in read_data:
+        company = line.strip()
+        companies.append(company)
+
+    return companies
+
 
 # given a list of companies and a dictionary of words, return string with capitalised brand names
 def capitalise_companies(companies, payload):
